@@ -1,0 +1,10 @@
+{
+  "name": "observe",
+  "version": "0.1.0",
+  "description": "Opt-in session observer: TL;DR enforcement on every meaningful turn, FAQ capture of substantive questions, and a growing improvement log for each subject you choose to get better at. Every capability is off until activated individually, and no improvement axis exists until you name one; everything it writes stays in the host project — configuration in .claude/, documents in the project's docs.",
+  "author": { "name": "David Friedrich" },
+  "homepage": "https://github.com/durchnull/observe#readme",
+  "repository": "https://github.com/durchnull/observe",
+  "license": "MIT",
+  "keywords": ["hooks", "tldr", "faq", "improvement", "workflow"]
+}

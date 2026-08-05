@@ -1,0 +1,3 @@
+{"type":"user","message":{"role":"user","content":"Rename the helper module"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Done. I renamed the helper module to text_utils, updated all fourteen import sites across the codebase, adjusted the two mocks that patched the old module path, and ran the full test suite twice to be sure: all 12 tests pass with no warnings either time.\n\n## TL;DR\n\n**Informational**\n- Renamed helper module to text_utils\n- All 12 tests pass"}]}}
+{"type":"assistant","isSidechain":true,"message":{"role":"assistant","content":[{"type":"text","text":"Subagent chatter that carries no summary marker."}]}}

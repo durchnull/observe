@@ -1,0 +1,16 @@
+{
+  "name": "durchnull",
+  "owner": {
+    "name": "David Friedrich"
+  },
+  "metadata": {
+    "description": "David Friedrich's Claude Code plugins."
+  },
+  "plugins": [
+    {
+      "name": "observe",
+      "source": ".",
+      "description": "Opt-in session observer: TL;DR enforcement, FAQ capture, and a growing improvement log per subject you choose — each capability off until activated individually; everything it writes stays in the host project, configuration in .claude/ and documents in its docs."
+    }
+  ]
+}

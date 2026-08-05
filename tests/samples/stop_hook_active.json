@@ -1,0 +1,11 @@
+{
+  "session_id": "sess-42",
+  "prompt_id": "prompt-3",
+  "transcript_path": "__TRANSCRIPT__",
+  "cwd": "__CWD__",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "stop_hook_active": true,
+  "last_assistant_message": "Continuing after a previous block, still without a summary.",
+  "stop_reason": "end_turn"
+}

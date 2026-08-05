@@ -1,0 +1,150 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# The token every job below is handed. Without this block the run inherits the
+# repository default — a settings-page value that changes without a commit, and
+# these workflows run on pull_request, so a fork's code is what meets it. Read is
+# all any step here needs; declaring it in the file makes the file the guarantee,
+# and it travels with every clone and fork.
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      # `claude plugin validate <dir>` checks only ONE manifest — marketplace.json wins
+      # when both are present — so plugin.json would never be schema-checked here. This
+      # asserts the fields that matter plus the agreement `claude plugin tag` relies on.
+      # The self-entry source is compared as a path, not a string: "." and "./" both name
+      # the marketplace root and both load, so a trailing slash must not fail the build.
+      - name: Manifests are valid and agree
+        run: |
+          python3 - <<'EOF'
+          import json, re, sys
+
+          def read(path):
+              with open(path, encoding="utf-8") as fh:
+                  return json.load(fh)
+
+          plugin = read(".claude-plugin/plugin.json")
+          market = read(".claude-plugin/marketplace.json")
+          bad = []
+          for key in ("name", "version", "description"):
+              if not plugin.get(key):
+                  bad.append("plugin.json is missing %r" % key)
+          if not re.match(r"^\d+\.\d+\.\d+", plugin.get("version", "")):
+              bad.append("plugin.json version %r is not SemVer" % plugin.get("version"))
+          def is_self(source):
+              return isinstance(source, str) and source.strip().rstrip("/") == "."
+
+          sources = [p.get("source") for p in market.get("plugins", [])]
+          entry = next((p for p in market.get("plugins", []) if is_self(p.get("source"))), None)
+          if entry is None:
+              bad.append("marketplace.json has no self-entry pointing at the repo root; sources found: %r" % (sources,))
+          else:
+              if entry.get("name") != plugin.get("name"):
+                  bad.append("name mismatch: plugin.json %r vs marketplace entry %r" % (plugin.get("name"), entry.get("name")))
+              if "version" in entry:
+                  bad.append("marketplace entry pins a version — a second source of truth that will drift")
+          with open("CHANGELOG.md", encoding="utf-8") as fh:
+              top = re.search(r"^## \[([^\]]+)\]", fh.read(), re.M)
+          if not top:
+              bad.append("CHANGELOG.md has no version heading")
+          elif top.group(1) != plugin.get("version"):
+              bad.append("CHANGELOG.md top entry is [%s] but plugin.json is %s" % (top.group(1), plugin.get("version")))
+          hooks = read("hooks/hooks.json")
+          for event, matchers in hooks.get("hooks", {}).items():
+              for matcher in matchers:
+                  for hook in matcher.get("hooks", []):
+                      if "${CLAUDE_PLUGIN_ROOT}" not in hook.get("command", ""):
+                          bad.append("%s hook command lacks ${CLAUDE_PLUGIN_ROOT}: %r" % (event, hook.get("command")))
+          for msg in bad:
+              print("FAIL: %s" % msg, file=sys.stderr)
+          if bad:
+              sys.exit(1)
+          print("OK: manifests valid and in agreement (%s %s)" % (plugin["name"], plugin["version"]))
+          EOF
+
+      # A public plugin must run on any machine: no absolute or home paths anywhere.
+      - name: No hardcoded machine paths
+        run: |
+          if grep -rnE '/Users/|/home/|~/[A-Za-z]' scripts/ skills/ hooks/ reference/ .claude-plugin/; then
+            echo "FAIL: hardcoded machine path above"
+            exit 1
+          fi
+          echo "OK: no hardcoded paths"
+
+      # A skill that points at a bundled file it does not ship fails at runtime,
+      # in someone else's project, with nothing to read. Catch it here instead.
+      - name: Bundled paths resolve
+        run: |
+          python3 - <<'EOF'
+          import os, re, sys
+
+          bad = []
+          for root, _, names in os.walk("."):
+              if ".git" in root.split(os.sep):
+                  continue
+              for name in names:
+                  if not name.endswith((".md", ".json")):
+                      continue
+                  path = os.path.join(root, name)
+                  with open(path, encoding="utf-8") as fh:
+                      for target in re.findall(r'\$\{CLAUDE_PLUGIN_ROOT\}/([\w./-]+)', fh.read()):
+                          if not os.path.exists(target):
+                              bad.append("%s points at a missing %r" % (path, target))
+          for msg in sorted(set(bad)):
+              print("FAIL: %s" % msg, file=sys.stderr)
+          if bad:
+              sys.exit(1)
+          print("OK: every bundled path resolves")
+          EOF
+
+      # The privacy promise in the README is enforced, not asserted: a hook script
+      # that imports a network-capable module fails the build.
+      - name: Scripts make no network calls
+        run: |
+          if grep -rnE '^[[:space:]]*(import|from)[[:space:]]+(socket|urllib|http|requests|ftplib|smtplib|poplib|imaplib|xmlrpc)' scripts/; then
+            echo "FAIL: network-capable import above"
+            exit 1
+          fi
+          echo "OK: stdlib-offline only"
+
+      - name: Scripts compile
+        run: python3 -m py_compile scripts/*.py tests/run_tests.py
+
+      - name: Hook-contract tests
+        run: python3 tests/run_tests.py
+
+      # Every shipped surface must be documented, and nothing documented may be missing.
+      - name: README matches the shipped surface
+        run: |
+          python3 - <<'EOF'
+          import os, sys
+
+          with open("README.md", encoding="utf-8") as fh:
+              readme = fh.read()
+          bad = []
+          for skill in sorted(os.listdir("skills")):
+              if os.path.isfile(os.path.join("skills", skill, "SKILL.md")) and ("/observe:%s" % skill) not in readme:
+                  bad.append("skill /observe:%s ships but is undocumented" % skill)
+          for script in sorted(os.listdir("scripts")):
+              if script.endswith(".py") and script != "lib_config.py" and script not in readme:
+                  bad.append("hook script %r ships but is undocumented" % script)
+          for msg in bad:
+              print("FAIL: %s" % msg, file=sys.stderr)
+          if bad:
+              sys.exit(1)
+          print("OK: README documents the shipped surface")
+          EOF

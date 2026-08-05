@@ -1,0 +1,6 @@
+{
+  "session_id": "sess-42",
+  "cwd": "__CWD__",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Please rename the helper module, update every import site, and run the full test suite before committing."
+}

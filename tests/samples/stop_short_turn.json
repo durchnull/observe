@@ -1,0 +1,10 @@
+{
+  "session_id": "sess-42",
+  "prompt_id": "prompt-5",
+  "transcript_path": "__TRANSCRIPT__",
+  "cwd": "__CWD__",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "Yes — that flag enables verbose output.",
+  "stop_reason": "end_turn"
+}

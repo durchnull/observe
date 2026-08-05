@@ -1,0 +1,6 @@
+{
+  "session_id": "sess-42",
+  "cwd": "__CWD__",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "Please review this snippet:\n```js\nconst v = flag ? compute(a) : fallback(b);\nconst u = new URL('https://example.com/search?q=claude&page=2');\n```\nIt throws on the second line."
+}

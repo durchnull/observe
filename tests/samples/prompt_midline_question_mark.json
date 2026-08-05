@@ -1,0 +1,6 @@
+{
+  "session_id": "sess-42",
+  "cwd": "__CWD__",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "The regex [a-z]+? is non-greedy but the matcher still backtracks badly on long inputs, please profile it and optimize the hot path."
+}

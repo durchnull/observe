@@ -1,0 +1,7 @@
+# Local-only working files. One generic rule, so adding a file here never
+# publishes its name — a tracked .gitignore is public writing.
+.dev/
+
+.DS_Store
+__pycache__/
+*.pyc

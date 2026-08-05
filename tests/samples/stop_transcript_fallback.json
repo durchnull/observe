@@ -1,0 +1,9 @@
+{
+  "session_id": "sess-42",
+  "prompt_id": "prompt-4",
+  "transcript_path": "__TRANSCRIPT__",
+  "cwd": "__CWD__",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "stop_reason": "end_turn"
+}

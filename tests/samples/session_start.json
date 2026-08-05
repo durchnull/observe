@@ -1,0 +1,7 @@
+{
+  "hook_event_name": "SessionStart",
+  "session_id": "0198f2c1-4a77-4b1e-9d2a-6f0b3c5e81aa",
+  "transcript_path": "__TRANSCRIPT__",
+  "cwd": "__CWD__",
+  "source": "startup"
+}

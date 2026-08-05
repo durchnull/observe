@@ -1,0 +1,6 @@
+{
+  "session_id": "sess-42",
+  "cwd": "__CWD__",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "How does the marketplace resolve a plugin's version when the source is an unpinned github repo?"
+}

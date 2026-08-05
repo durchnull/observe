@@ -1,0 +1,10 @@
+{
+  "session_id": "sess-42",
+  "prompt_id": "prompt-7",
+  "transcript_path": "__TRANSCRIPT__",
+  "cwd": "__CWD__",
+  "permission_mode": "default",
+  "hook_event_name": "Stop",
+  "last_assistant_message": "Done. I renamed the helper module to text_utils, updated all fourteen import sites across the codebase, adjusted the two mocks that patched the old module path, and ran the full test suite twice to be sure: all 12 tests pass with no warnings either time.\n\n## TL;DR\n\n**Informational**\n- Renamed helper module to text_utils; 14 import sites updated\n- All 12 tests pass, run twice",
+  "stop_reason": "end_turn"
+}
