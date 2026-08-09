@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org) and
 `observe` is pre-1.0: while the major version is `0`, the config schema, its
 location, and the skill surface may change in a minor release.
 
+## [0.1.1] — 2026-08-09
+
+### Changed
+
+- The `/plugin` picker now shows "Observe (Beta)" — while the major version is
+  `0` the command surface can still move, and the picker's label is the one
+  place a user reads before installing.
+
 ## [0.1.0] — 2026-08-08
 
 ### Added
