@@ -4,6 +4,7 @@ Two commands cover the whole check:
 
 ```bash
 python3 tests/run_tests.py          # hook-contract tests (stdlib only, no network)
+python3 scripts/help.py --self-test # /observe:help lists exactly what skills/ ships
 claude plugin validate . --strict   # manifest + frontmatter + hooks.json
 ```
 
@@ -33,6 +34,11 @@ the `remind` switch and a missing session directory.
 The `resolve_config.py` cases build their fixture projects inline instead — a bare
 repo, one with a `docs/` directory, one already configured, and one whose config
 file is broken — and assert that the resolver writes nothing into any of them.
+
+`help.py` is checked from both ends: its own `--self-test` fails when the authored
+command table and `skills/` disagree, and the suite renders it in a bare project,
+in a fully configured one, and over a config file that is not valid JSON — the
+three states someone actually types `/observe:help` in.
 
 `tldr_contract.py` gets the same treatment, plus one rule of its own: the `tldr`
 skill **injects** it, and an injected command that fails aborts the whole skill

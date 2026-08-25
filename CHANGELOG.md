@@ -32,6 +32,14 @@ location, and the skill surface may change in a minor release.
   project's own marker and labels in it, and the active style's rules. The
   `tldr` skill injects it, so a turn is asked to write **this project's**
   format rather than the plugin's defaults recited from the skill body.
+- `/observe:help` — the plugin explaining itself, printed from
+  `scripts/help.py` rather than written as skill prose: the version and
+  documentation link from the manifest, the command list checked against
+  `skills/` on every run (it says so rather than omitting a command when the two
+  disagree), and an "In this project" block measured in the directory it ran in.
+  Installing observe activates nothing, so "what does this do" and "is any of it
+  on here" are the same question — the second half is the one no static README
+  can answer. User-typed only, and it reads without writing anything.
 - `reference/plain-language.md` — the long form of the plain-language style:
   the four governing principles applied to a summary, what changes in practice,
   and what plain language is not. Read only when a summary needs more than the

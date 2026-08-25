@@ -44,12 +44,13 @@ def load_sample(name, cwd=None, transcript=None):
     return json.dumps(resolved)
 
 
-def run_script(script, stdin_text, tmpdir, cwd=None):
-    """Run a bundled script. `cwd` matters for resolve_config.py, which reads the
-    project from its working directory rather than from the hook input."""
+def run_script(script, stdin_text, tmpdir, cwd=None, args=()):
+    """Run a bundled script. `cwd` matters for resolve_config.py, help.py and
+    tldr_contract.py, which read the project from their working directory rather
+    than from the hook input."""
     env = dict(os.environ, TMPDIR=tmpdir)
     proc = subprocess.run(
-        [sys.executable, os.path.join(SCRIPTS_DIR, script)],
+        [sys.executable, os.path.join(SCRIPTS_DIR, script)] + list(args),
         input=stdin_text, capture_output=True, text=True, env=env, timeout=30, cwd=cwd,
     )
     return proc.returncode, proc.stdout.strip()
@@ -840,6 +841,79 @@ def contract_never_writes_to_the_project(env_factory):
     env = env_factory(config=None)
     contract(env)
     expect(os.listdir(env.project) == [], "tldr_contract.py wrote into the project: %r"
+           % os.listdir(env.project))
+
+
+# --- help.py -----------------------------------------------------------------
+#
+# /observe:help prints this script's output verbatim, so a wrong line here is a
+# wrong answer nobody re-words into shape. It also runs where nothing is set up,
+# which is exactly where someone types it first.
+
+def help_out(env, cwd=None, args=()):
+    rc, out = run_script("help.py", "", env.tmpdir, cwd=cwd or env.project, args=args)
+    expect(rc == 0, "exit code %d, expected 0" % rc)
+    return out
+
+
+@case
+def help_self_test_agrees_with_what_ships(env_factory):
+    env = env_factory(config=None)
+    rc, out = run_script("help.py", "", env.tmpdir, args=("--self-test",))
+    expect(rc == 0, "the authored command table disagrees with skills/: %r" % out)
+
+
+@case
+def help_lists_every_shipped_command(env_factory):
+    env = env_factory(config=None)
+    out = help_out(env)
+    shipped = sorted(name for name in os.listdir(os.path.join(SCRIPTS_DIR, os.pardir, "skills"))
+                     if os.path.isfile(os.path.join(SCRIPTS_DIR, os.pardir, "skills", name, "SKILL.md")))
+    for name in shipped:
+        expect("/observe:%s" % name in out, "help does not list /observe:%s: %r" % (name, out))
+    expect("out of date" not in out, "help reported drift against skills/: %r" % out)
+
+
+@case
+def help_in_a_bare_project_says_nothing_is_activated(env_factory):
+    env = env_factory(config=None)
+    out = help_out(env)
+    expect("Nothing is activated here" in out, "a bare project is not reported as inactive: %r" % out)
+    expect("/observe:init" in out, "help does not say how to set the project up: %r" % out)
+
+
+@case
+def help_reports_the_activated_capabilities(env_factory):
+    env = env_factory(config={
+        "tldr": {"enabled": True, "style": "plain"},
+        "faq": {"enabled": True, "dir": "docs/faq/"},
+        "improve": {"dir": "docs/improvements/", "axes": {
+            "prompts": {"enabled": True, "title": "Prompts", "focus": "x"},
+            "english": {"enabled": False, "title": "English", "focus": "y"}}},
+    })
+    out = help_out(env)
+    expect("TL;DR: on" in out, "an active tldr is not reported: %r" % out)
+    expect("ISO 24495-1:2023" in out, "the configured style is not reported: %r" % out)
+    expect("FAQ capture: on" in out, "an active faq is not reported: %r" % out)
+    expect("1 of 2 axes on (prompts)" in out, "the axis count is wrong: %r" % out)
+
+
+@case
+def help_survives_a_broken_config(env_factory):
+    env = env_factory(config=None)
+    os.makedirs(os.path.join(env.project, CONFIG_DIR), exist_ok=True)
+    with open(os.path.join(env.project, CONFIG_DIR, "config.json"), "w", encoding="utf-8") as fh:
+        fh.write("{ not json")
+    out = help_out(env)
+    expect("could not be read" in out, "a broken config must be reported, not hidden: %r" % out)
+    expect("/observe:tldr" in out, "the command list must survive a broken config: %r" % out)
+
+
+@case
+def help_never_writes_to_the_project(env_factory):
+    env = env_factory(config=None)
+    help_out(env)
+    expect(os.listdir(env.project) == [], "help.py wrote into the project: %r"
            % os.listdir(env.project))
 
 

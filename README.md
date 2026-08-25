@@ -35,8 +35,10 @@ improvement logs — goes to the project's documentation directory
 | `/observe:faq` | `UserPromptSubmit` hook (`scripts/faq_reminder.py`) + skill | Question-shaped prompts get a one-line reminder; the model judges whether the question is substantive and reusable, then archives it as a numbered markdown file under `docs/faq/`, deduplicating against existing entries. |
 | `/observe:improve` | `SessionStart` hook (`scripts/improve_reminder.py`) + skill | You name what to get better at — one **axis** per subject. A review reads the recent evidence for that axis, compares it against what the axis's log already says, and appends what changed: `new`, `recurring`, `improving`, `resolved`. One growing log per axis under `docs/improvements/`. No axis exists until you start one; once one does, a session offers the review when a window of evidence has come in. |
 
-A fourth skill, `/observe:init`, is not a capability but the setup interview for
-all three — see [Activation](#activation).
+Two more skills are not capabilities: `/observe:init`, the setup interview for
+all three — see [Activation](#activation) — and `/observe:help`, which prints
+what the plugin does, what it ships, and which capabilities *this* project has
+switched on. `/observe:help` reads only; it never activates anything.
 
 How each one works underneath — the hook contracts, the FAQ heuristic, the review
 markers — is in [docs/capabilities.md](docs/capabilities.md).
@@ -176,8 +178,8 @@ than the plugin's defaults recited from memory.
 ## Privacy
 
 Everything stays local. The scripts are Python 3 stdlib only — the hooks read their
-input from stdin, the resolver and the TL;DR contract read the project's own config
-file, and none of them makes **any network call** (CI fails the build if a network-capable
+input from stdin, the resolver, the TL;DR contract and `scripts/help.py` read the
+project's own config file, and none of them makes **any network call** (CI fails the build if a network-capable
 module is ever imported). The plugin writes only inside the host project, and only
 what you activated: the config file `/observe:init` and the toggles maintain
 (`.claude/observe/config.json`),
@@ -190,6 +192,7 @@ most one short quoted line per habit — never a transcript dump.
 
 ```bash
 python3 tests/run_tests.py          # hook-contract tests (stdlib only, no network)
+python3 scripts/help.py --self-test # /observe:help lists exactly what skills/ ships
 claude plugin validate . --strict   # manifest + frontmatter + hooks.json
 ```
 
