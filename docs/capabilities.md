@@ -21,8 +21,20 @@ one-line answer is never padded with boilerplate. Loop protection is built in: t
 hook honors `stop_hook_active` when a CLI still sends it, and independently blocks
 **at most once per user prompt** (a one-shot marker in the OS temp dir), so a
 misbehaving turn can never loop. Any error exits silently — the hook can slip, but
-never break a session. The skill itself documents the format and doubles as the
-on/off toggle.
+never break a session.
+
+Those keys govern the section's **shape**; `style` governs how the bullets are
+**written**. `"iso-24495-1"` asks for plain language as ISO 24495-1:2023 frames
+it — the reader gets what they need, finds it, understands it, and can use it —
+while `"default"` asks only for outcomes and concrete values. The style travels
+to both places a TL;DR is asked for: the hook appends its one-sentence reminder
+to a block reason, and the skill injects the full contract from
+`scripts/tldr_contract.py`, which prints what the project resolves to today with
+its own marker and labels in the skeleton. Anything a style cannot express goes
+in `style_notes` as free text and is passed through verbatim. The bundled
+`reference/plain-language.md` holds the long form and is read only when a
+summary needs more than the rules. The skill doubles as the on/off toggle and
+as `/observe:tldr style <name>`.
 
 ## FAQ capture — `/observe:faq`
 

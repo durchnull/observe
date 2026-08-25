@@ -31,7 +31,7 @@ improvement logs — goes to the project's documentation directory
 
 | Skill | Mechanism | When active |
 | :--- | :--- | :--- |
-| `/observe:tldr` | `Stop` hook (`scripts/check_tldr.py`) + skill | Every meaningful turn ends with a `## TL;DR` section — an **Informational** block (outcomes, concrete values) and an **Actionable** block (your open todos, omitted when empty). A long turn without it is blocked once with a reminder. |
+| `/observe:tldr` | `Stop` hook (`scripts/check_tldr.py`) + skill | Every meaningful turn ends with a `## TL;DR` section — an **Informational** block (outcomes, concrete values) and an **Actionable** block (your open todos, omitted when empty). A long turn without it is blocked once with a reminder. The marker, the labels, the length that counts as meaningful and the **writing style** are all yours to set — including plain language to [ISO 24495-1:2023](https://www.iso.org/standard/78907.html). |
 | `/observe:faq` | `UserPromptSubmit` hook (`scripts/faq_reminder.py`) + skill | Question-shaped prompts get a one-line reminder; the model judges whether the question is substantive and reusable, then archives it as a numbered markdown file under `docs/faq/`, deduplicating against existing entries. |
 | `/observe:improve` | `SessionStart` hook (`scripts/improve_reminder.py`) + skill | You name what to get better at — one **axis** per subject. A review reads the recent evidence for that axis, compares it against what the axis's log already says, and appends what changed: `new`, `recurring`, `improving`, `resolved`. One growing log per axis under `docs/improvements/`. No axis exists until you start one; once one does, a session offers the review when a window of evidence has come in. |
 
@@ -102,6 +102,19 @@ Or switch each capability on by itself, in the project where you want it:
 ```
 
 `tldr` and `faq` are single switches, each also taking `off` and `status`.
+`tldr` takes one more: `style`, which decides how the bullets are written.
+
+```text
+/observe:tldr style plain      # plain language, to ISO 24495-1:2023
+/observe:tldr style default    # outcomes and concrete values, nothing further
+/observe:tldr status           # on or off, and the style it resolves to
+```
+
+Plain language here means short sentences, everyday words, active voice and the
+outcome first — never a blurred identifier: file names, commands, flags and
+figures stay exact. What a style cannot express, `tldr.style_notes` can, in your
+own words.
+
 `improve` has nothing to switch on globally: you start an axis by saying what
 you want to improve, in your own words, and each axis is on or off on its own.
 Starting one is the whole setup — once a window of sessions has gone by
@@ -126,12 +139,12 @@ offer. Either takes an axis or applies to all of them.
 `.claude/observe/config.json` at the project root; you can maintain that file by hand
 instead — `tldr` and `faq` are active only when their section carries an explicit
 `"enabled": true`, and an `improve` axis only when its own entry does. A file with
-all three capabilities on, leaving every tuning key at its default:
+all three capabilities on, leaving every tuning key at its default but one:
 
 ```json
 {
   "configVersion": 1,
-  "tldr": { "enabled": true },
+  "tldr": { "enabled": true, "style": "iso-24495-1" },
   "faq": { "enabled": true, "dir": "docs/faq/" },
   "improve": {
     "dir": "docs/improvements/",
@@ -147,19 +160,24 @@ all three capabilities on, leaving every tuning key at its default:
 }
 ```
 
-Every key but `enabled` is optional and falls back to the default shown above.
+Every key but `enabled` is optional and falls back to its default — `style`
+above is shown set on purpose, since its default is `"default"`.
 The full key-by-key reference — every default, what each one changes — is in
 [docs/configuration.md](docs/configuration.md). To see what a project resolves to
 today — which capabilities are on, which axes exist, and which values are
 configured rather than inferred — the bundled `scripts/resolve_config.py` prints
 exactly that and writes nothing; `/observe:init` shows its report before it asks
-anything.
+anything. `scripts/tldr_contract.py` does the same one level down, for the TL;DR
+alone: the state, every knob, the skeleton to copy with this project's own
+marker and labels in it, and the rules of the configured style. The `tldr` skill
+injects it, so what a turn is asked to write is this project's format rather
+than the plugin's defaults recited from memory.
 
 ## Privacy
 
 Everything stays local. The scripts are Python 3 stdlib only — the hooks read their
-input from stdin, the resolver reads the project's own config file, and none of them
-makes **any network call** (CI fails the build if a network-capable
+input from stdin, the resolver and the TL;DR contract read the project's own config
+file, and none of them makes **any network call** (CI fails the build if a network-capable
 module is ever imported). The plugin writes only inside the host project, and only
 what you activated: the config file `/observe:init` and the toggles maintain
 (`.claude/observe/config.json`),

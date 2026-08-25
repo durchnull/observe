@@ -17,6 +17,11 @@ sub-section omitted, `stop_hook_active`, the short-turn exemption, and the
 transcript fallback. The FAQ samples also cover the false-positive guards
 (question marks inside fenced code, or mid-line only).
 
+The `tldr.style` cases sit with the Stop hook: every spelling a project might
+write resolves to the same style, a style the plugin does not know still blocks
+with the default wording rather than switching the hook off, and the project's
+free-text `style_notes` reach the reminder but are capped there.
+
 The `SessionStart` cases build their own evidence: a session directory whose
 transcript timestamps are set per case, and an axis log carrying a review
 heading, which together decide whether a review is due. They cover the counting
@@ -28,6 +33,11 @@ the `remind` switch and a missing session directory.
 The `resolve_config.py` cases build their fixture projects inline instead — a bare
 repo, one with a `docs/` directory, one already configured, and one whose config
 file is broken — and assert that the resolver writes nothing into any of them.
+
+`tldr_contract.py` gets the same treatment, plus one rule of its own: the `tldr`
+skill **injects** it, and an injected command that fails aborts the whole skill
+invocation. So every case asserts it exits 0 and prints a usable contract —
+including over a config file that is not valid JSON.
 
 ## Trying a change
 

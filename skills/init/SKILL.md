@@ -32,7 +32,8 @@ again.
 when a new subject comes up. The rules that make it safe:
 
 - **Tuning knobs already in the file are never touched** — a project that set
-  `marker`, `min_turn_chars`, `language`, `sessions`, or a `dir` keeps them.
+  `marker`, `min_turn_chars`, `style`, `language`, `sessions`, or a `dir` keeps
+  them.
 - **Axes are never deleted, and neither are their logs.** An axis the user does
   not mention in this run is left exactly as it is.
 - The `enabled` switches are the one thing this run does decide, because they
@@ -58,7 +59,7 @@ For the rest, ask **once**, as a single multi-select `AskUserQuestion`:
 
 | Option | Describe it as |
 | :--- | :--- |
-| **Closing TL;DR** | Every meaningful turn ends with a summary — an **Informational** block and an **Actionable** one. A long turn without it is blocked once with a reminder. This is the only capability felt on every single turn. |
+| **Closing TL;DR** | Every meaningful turn ends with a summary — an **Informational** block and an **Actionable** one. A long turn without it is blocked once with a reminder. This is the only capability felt on every single turn. It can also be asked for in plain language (ISO 24495-1:2023) — see the `style` bullet in §4. |
 | **FAQ capture** | Substantive questions get archived as numbered markdown entries you can read later. A question-shaped prompt gets a one-line reminder; nothing is ever blocked. |
 | **Improvement logs** | You name subjects to get better at, and each one grows its own log of what changed. Needs at least one subject — §3. |
 
@@ -121,6 +122,11 @@ With `--dry-run`, print the file that would be written and stop.
 - **Never record a tuning knob at its default value.** A pinned default is a
   value the project now owns and has to maintain. The documents directory is
   the one deliberate exception — next bullet.
+- **Record `tldr.style` only if the user named one.** "TL;DR in plain language",
+  "keep it plain", "ISO 24495" all mean `"style": "iso-24495-1"`; anything else
+  leaves the key out, because absent already means the default style. Do not ask
+  about it — it is a preference the user can change in one line later
+  (`/observe:tldr style plain`), and one more question here buys nothing.
 - **Record the documents directory** when a capability that writes documents is
   activated — `faq.dir` when FAQ capture goes on, `improve.dir` when the first
   axis starts — using the directory the block above reports. Write it down

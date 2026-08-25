@@ -5,7 +5,9 @@ Reads the hook input from stdin. When the tldr capability is activated and the
 turn's final assistant text lacks the configured marker — or lacks one of the
 configured required sub-section labels after it — prints a
 `{"decision": "block", "reason": ...}` JSON so the model finishes the turn
-properly. Fail-safe: on any error it exits 0 with no output, and it blocks at
+properly. The reason also carries the configured output style, so a project
+that asked for plain language gets that back at the moment it is needed rather
+than only in the skill. Fail-safe: on any error it exits 0 with no output, and it blocks at
 most once per user prompt so a misbehaving turn can never loop.
 """
 
@@ -16,6 +18,11 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lib_config
+
+# A block reason is read mid-turn, so the project's free-text wording note is
+# passed through but capped: a note longer than this is a document, and a
+# document belongs in the skill's contract, not in every reminder.
+NOTES_LIMIT = 300
 
 
 def last_assistant_text_from_transcript(path):
@@ -60,6 +67,26 @@ def config_labels(settings, key):
     if not isinstance(value, list):
         return []
     return [item for item in value if isinstance(item, str) and item.strip()]
+
+
+def style_clause(settings):
+    """What the configured output style adds to a block reason — "" for none.
+
+    Kept to one sentence plus the project's own note: this text is read on a
+    turn that has already been stopped once, so it has to say how to write the
+    summary without becoming something to study. The full guidance lives in the
+    style's bundled reference, which the skill points at.
+    """
+    style = lib_config.tldr_style(settings)
+    clause = ""
+    if style["spec"]["reminder"]:
+        clause += " " + style["spec"]["reminder"]
+    notes = lib_config.tldr_style_notes(settings)
+    if notes:
+        if len(notes) > NOTES_LIMIT:
+            notes = notes[:NOTES_LIMIT].rstrip() + "…"
+        clause += " This project also asks: %s" % notes
+    return clause
 
 
 def already_blocked(session_id, prompt_id):
@@ -136,6 +163,7 @@ def main():
             " Add %s only when there are bullets for it — an empty sub-section "
             "is omitted, not written." % ", ".join("'%s'" % label for label in optional)
         )
+    reason += style_clause(settings)
     print(json.dumps({"decision": "block", "reason": reason}))
 
 

@@ -7,6 +7,44 @@ adheres to [Semantic Versioning](https://semver.org) and
 `observe` is pre-1.0: while the major version is `0`, the config schema, its
 location, and the skill surface may change in a minor release.
 
+## [0.2.0] — 2026-08-25
+
+### Added
+
+- `tldr.style` — how the TL;DR bullets are **written**, alongside the keys that
+  already governed the section's shape. `"iso-24495-1"` asks for plain language
+  as ISO 24495-1:2023 frames it: the reader gets what they need, finds it,
+  understands it, and can use it — short sentences, everyday words, active
+  voice, the outcome first, and identifiers left exact, because a simplified
+  file name is a wrong answer in a friendly tone. `"default"` (the default)
+  keeps the previous behaviour, so an existing config is unchanged by this
+  release. `plain`, `plain language` and `ISO 24495-1:2023` are accepted
+  spellings of the same style; a value naming no style falls back to `default`
+  and is reported as unrecognized rather than switching the capability off.
+- `/observe:tldr style <name>` sets it, so the style is not a key you have to
+  know about to reach, and `/observe:tldr status` now reports it.
+- `tldr.style_notes` — free text for what a style cannot hold (a house word, a
+  term to avoid, the reader to write for), passed through verbatim into the
+  skill's contract and into the hook reminder, where it is capped at 300
+  characters.
+- `scripts/tldr_contract.py` — the TL;DR counterpart to `resolve_config.py`:
+  it prints what the project resolves to today, the skeleton to copy with the
+  project's own marker and labels in it, and the active style's rules. The
+  `tldr` skill injects it, so a turn is asked to write **this project's**
+  format rather than the plugin's defaults recited from the skill body.
+- `reference/plain-language.md` — the long form of the plain-language style:
+  the four governing principles applied to a summary, what changes in practice,
+  and what plain language is not. Read only when a summary needs more than the
+  rules the contract already states.
+
+### Changed
+
+- The Stop hook's block reason now carries the configured style and the
+  project's own notes. A blocked turn is told how to write the summary, not
+  only that one is missing.
+- `scripts/resolve_config.py` reports the resolved style and notes in the
+  `tldr` block, and flags a style value it does not recognise.
+
 ## [0.1.1] — 2026-08-09
 
 ### Changed

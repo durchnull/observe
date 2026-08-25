@@ -60,6 +60,31 @@ def documents_dir(cwd, section, name, key="dir"):
     return lib_config.default_docs_dir(cwd, name), "inferred"
 
 
+def style_lines(section):
+    """How the TL;DR bullets are written — the style, and any free-text note.
+
+    Reported next to the shape knobs above it, because the two halves are read
+    together: the marker and the labels say what the section looks like, the
+    style says what the sentences in it sound like.
+    """
+    style = lib_config.tldr_style(section)
+    if "style" not in section:
+        origin = "default"
+    elif style["known"]:
+        origin = "configured"
+    else:
+        origin = "configured, but unrecognized"
+    lines = ["              style %s (%s)" % (style["spec"]["label"], origin)]
+    if origin.endswith("unrecognized"):
+        lines.append("                    %s names no style this plugin knows, so the default "
+                     "is used — valid: %s"
+                     % (show(section["style"]), ", ".join(sorted(lib_config.TLDR_STYLES))))
+    notes = lib_config.tldr_style_notes(section)
+    if notes:
+        lines.append("              notes %s" % show(notes))
+    return lines
+
+
 def improve_lines(cwd, config):
     """The improve block: the two knobs, then one line per axis."""
     section, _ = section_of(config, "improve")
@@ -141,6 +166,7 @@ def report(cwd):
     lines.append("              required %s · optional %s" % (
         knob(tldr, "tldr", "required_subsections").split(" ", 1)[1],
         knob(tldr, "tldr", "optional_subsections").split(" ", 1)[1]))
+    lines.extend(style_lines(tldr))
 
     faq, faq_present = section_of(config, "faq")
     faq_dir, faq_source = documents_dir(cwd, faq, "faq")

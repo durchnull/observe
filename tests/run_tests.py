@@ -244,6 +244,70 @@ def tldr_transcript_fallback_passes_and_skips_sidechain(env_factory):
 
 
 @case
+def tldr_default_style_adds_nothing_to_the_reason(env_factory):
+    env = env_factory(config=FULL_CONFIG)
+    rc, out = run_script("check_tldr.py", load_sample("stop_marker_missing.json", cwd=env.project), env.tmpdir)
+    reason = json.loads(out).get("reason", "")
+    expect("plain language" not in reason.lower(),
+           "the default style must not push a wording style: %r" % reason)
+
+
+@case
+def tldr_plain_language_style_is_named_in_the_reason(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style": "iso-24495-1"}})
+    rc, out = run_script("check_tldr.py", load_sample("stop_marker_missing.json", cwd=env.project), env.tmpdir)
+    reason = json.loads(out).get("reason", "")
+    expect("ISO 24495-1:2023" in reason, "reason does not name the standard: %r" % reason)
+    expect("exact" in reason, "reason drops the identifiers-stay-exact half: %r" % reason)
+
+
+@case
+def tldr_style_spelling_variants_resolve_to_the_same_style(env_factory):
+    # A hand-edited config is allowed to say it the way a person would.
+    for written in ("plain", "plain language", "ISO 24495-1:2023", "Iso-24495-1"):
+        env = env_factory(config={"tldr": {"enabled": True, "style": written}})
+        rc, out = run_script("check_tldr.py", load_sample("stop_marker_missing.json", cwd=env.project), env.tmpdir)
+        reason = json.loads(out).get("reason", "")
+        expect("ISO 24495-1:2023" in reason, "%r did not resolve to the plain-language style: %r"
+               % (written, reason))
+
+
+@case
+def tldr_unknown_style_still_blocks_with_the_default_wording(env_factory):
+    # A typo in a wording knob must never cost the summary itself.
+    env = env_factory(config={"tldr": {"enabled": True, "style": "iso-99999"}})
+    rc, out = run_script("check_tldr.py", load_sample("stop_marker_missing.json", cwd=env.project), env.tmpdir)
+    result = json.loads(out)
+    expect(result.get("decision") == "block", "an unknown style must not disable the hook: %r" % out)
+    expect("plain language" not in result.get("reason", "").lower(),
+           "an unknown style must fall back to the default wording: %r" % out)
+
+
+@case
+def tldr_non_string_style_is_survived(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style": ["plain"]}})
+    rc, out = run_script("check_tldr.py", load_sample("stop_marker_missing.json", cwd=env.project), env.tmpdir)
+    expect(json.loads(out).get("decision") == "block", "a malformed style must not break the hook: %r" % out)
+
+
+@case
+def tldr_style_notes_reach_the_reason(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style_notes": 'Say "deploy", never "ship".'}})
+    rc, out = run_script("check_tldr.py", load_sample("stop_marker_missing.json", cwd=env.project), env.tmpdir)
+    reason = json.loads(out).get("reason", "")
+    expect('Say "deploy", never "ship".' in reason, "the project's own note is missing: %r" % reason)
+
+
+@case
+def tldr_long_style_notes_are_capped(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style_notes": "x" * 900}})
+    rc, out = run_script("check_tldr.py", load_sample("stop_marker_missing.json", cwd=env.project), env.tmpdir)
+    reason = json.loads(out).get("reason", "")
+    expect("x" * 300 in reason, "the note was not passed through at all: %r" % reason)
+    expect("x" * 400 not in reason, "a note this long must be capped, not echoed whole: %r" % reason)
+
+
+@case
 def tldr_garbage_stdin_is_silent(env_factory):
     env = env_factory(config=FULL_CONFIG)
     rc, out = run_script("check_tldr.py", "this is not json {{{", env.tmpdir)
@@ -657,6 +721,23 @@ def resolve_reports_the_reminder_switch(env_factory):
 
 
 @case
+def resolve_reports_the_tldr_style(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style": "plain",
+                                       "style_notes": "Write for a new teammate."}})
+    out = resolve(env)
+    expect("style plain language (ISO 24495-1:2023) (configured)" in out,
+           "the resolved style is not reported: %r" % out)
+    expect("Write for a new teammate." in out, "the style notes are not reported: %r" % out)
+
+
+@case
+def resolve_flags_an_unknown_tldr_style(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style": "iso-99999"}})
+    out = resolve(env)
+    expect("configured, but unrecognized" in out, "an unknown style reads as a real choice: %r" % out)
+
+
+@case
 def resolve_unreadable_config_is_reported_not_ignored(env_factory):
     # Silently treating a broken file as absent would let init overwrite it.
     env = env_factory(config=None)
@@ -672,6 +753,93 @@ def resolve_never_writes_to_the_project(env_factory):
     env = env_factory(config=None)
     resolve(env)
     expect(os.listdir(env.project) == [], "resolve_config.py wrote into the project: %r"
+           % os.listdir(env.project))
+
+
+# --- tldr_contract.py --------------------------------------------------------
+#
+# The tldr skill injects this script, and an injected command that fails aborts
+# the whole invocation — so "always exits 0, always prints a usable contract" is
+# the contract here, not a nicety.
+
+def contract(env, cwd=None):
+    rc, out = run_script("tldr_contract.py", "", env.tmpdir, cwd=cwd or env.project)
+    expect(rc == 0, "exit code %d, expected 0" % rc)
+    return out
+
+
+@case
+def contract_without_a_config_states_the_defaults_and_says_off(env_factory):
+    env = env_factory(config=None)
+    out = contract(env)
+    expect("never activated" in out, "an unconfigured project must be reported off: %r" % out)
+    expect("## TL;DR" in out, "the default marker is missing from the skeleton: %r" % out)
+    expect("**Informational**" in out, "the default required label is missing: %r" % out)
+    expect("**Actionable**" in out, "the default optional label is missing: %r" % out)
+
+
+@case
+def contract_uses_the_projects_own_marker_and_labels(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "marker": "## Zusammenfassung",
+                                       "required_subsections": ["**Ergebnis**"],
+                                       "optional_subsections": []}})
+    out = contract(env)
+    expect("state       ON" in out, "an activated project must be reported on: %r" % out)
+    expect("## Zusammenfassung" in out, "the configured marker is missing: %r" % out)
+    expect("**Ergebnis**" in out, "the configured label is missing: %r" % out)
+    expect("**Informational**" not in out,
+           "a default label leaked into a project that replaced it: %r" % out)
+
+
+@case
+def contract_states_the_plain_language_rules_and_its_reference(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style": "plain"}})
+    out = contract(env)
+    expect("ISO 24495-1:2023" in out, "the style is not named: %r" % out)
+    reference = os.path.normpath(os.path.join(SCRIPTS_DIR, os.pardir, "reference", "plain-language.md"))
+    expect(os.path.exists(reference), "the style names a reference the plugin does not ship")
+    expect(reference in out, "the contract does not point at the bundled guidance: %r" % out)
+
+
+@case
+def contract_default_style_names_no_reference(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True}})
+    out = contract(env)
+    expect("style       default" in out, "the default style is not reported: %r" % out)
+    expect("plain-language.md" not in out,
+           "the default style must not point at another style's guidance: %r" % out)
+
+
+@case
+def contract_flags_a_style_it_does_not_know(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style": "iso-99999"}})
+    out = contract(env)
+    expect("not a style this plugin knows" in out, "an unknown style is not flagged: %r" % out)
+    expect("iso-24495-1" in out, "the valid values are not listed: %r" % out)
+
+
+@case
+def contract_passes_the_projects_notes_through(env_factory):
+    env = env_factory(config={"tldr": {"enabled": True, "style_notes": "Write for a new teammate."}})
+    out = contract(env)
+    expect("Write for a new teammate." in out, "the project's own note is missing: %r" % out)
+
+
+@case
+def contract_survives_a_broken_config(env_factory):
+    env = env_factory(config=None)
+    os.makedirs(os.path.join(env.project, CONFIG_DIR), exist_ok=True)
+    with open(os.path.join(env.project, CONFIG_DIR, "config.json"), "w", encoding="utf-8") as fh:
+        fh.write("{ not json")
+    out = contract(env)
+    expect("## TL;DR" in out, "a broken config must still yield a usable contract: %r" % out)
+
+
+@case
+def contract_never_writes_to_the_project(env_factory):
+    env = env_factory(config=None)
+    contract(env)
+    expect(os.listdir(env.project) == [], "tldr_contract.py wrote into the project: %r"
            % os.listdir(env.project))
 
 

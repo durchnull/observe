@@ -24,6 +24,10 @@ DEFAULTS = {
         "min_turn_chars": 200,
         "required_subsections": ["**Informational**"],
         "optional_subsections": ["**Actionable**"],
+        # How the bullets are written, over and above the shape the marker and
+        # the sub-section labels give them. See TLDR_STYLES below.
+        "style": "default",
+        "style_notes": "",
     },
     "faq": {
         "enabled": False,
@@ -49,6 +53,64 @@ DEFAULT_IMPROVE = {
     "sessions": 5,
     "remind": True,
 }
+
+# The output styles `tldr.style` can name. The shape of a TL;DR — its marker
+# and its sub-section labels — is already configurable; a style governs the
+# other half, how the bullets under those labels are written. Each entry is
+# self-contained: `reminder` is the clause the Stop hook appends to a block
+# reason (kept to one sentence, because it is read on a blocked turn), `rules`
+# is what the skill states as the contract, and `reference` names a bundled
+# file with the full guidance, read only when a style needs more than its rules.
+TLDR_STYLES = {
+    "default": {
+        "label": "default",
+        "summary": "Concise outcome bullets; no further constraint on the wording.",
+        "reminder": "",
+        "rules": [
+            "Bullets state outcomes and concrete values (amounts, filenames, versions).",
+            "No filler such as \"successfully completed the task\".",
+        ],
+        "reference": None,
+    },
+    "iso-24495-1": {
+        "label": "plain language (ISO 24495-1:2023)",
+        "summary": ("The four governing principles of ISO 24495-1:2023 applied to a summary: "
+                    "the reader gets what they need, finds it, understands it, and can use it."),
+        "reminder": ("Write it in plain language (ISO 24495-1:2023): short sentences, everyday "
+                     "words, active voice, the outcome first, and one fact per bullet — but keep "
+                     "file names, commands, flags and figures exact."),
+        "rules": [
+            "Relevant — only what this reader needs to act; drop what the turn above already settled.",
+            "Findable — outcome first in each bullet, the qualifier after it; never bury the point mid-sentence.",
+            "Understandable — one idea per sentence, roughly 25 words or fewer; everyday words; active voice with the actor named.",
+            "Usable — an Actionable bullet says who does what, in the imperative, with the exact command or decision.",
+            "Exactness is not simplified away: file names, commands, flags, versions and figures stay verbatim.",
+            "Expand an abbreviation the first time unless the reader already uses it daily.",
+        ],
+        "reference": "reference/plain-language.md",
+    },
+}
+
+# What a project may write in `tldr.style` and still be understood. Keys are
+# normalized (lowercased, everything but a-z0-9 dropped), so "ISO 24495-1:2023",
+# "iso-24495-1" and "plain language" all land on the same style. An alias is a
+# convenience for a hand-edited config; the canonical ids above are what the
+# skill writes and what the documentation names.
+TLDR_STYLE_ALIASES = {
+    "": "default",
+    "default": "default",
+    "standard": "default",
+    "none": "default",
+    "iso": "iso-24495-1",
+    "iso24495": "iso-24495-1",
+    "iso244951": "iso-24495-1",
+    "iso2449512023": "iso-24495-1",
+    "plain": "iso-24495-1",
+    "plainlanguage": "iso-24495-1",
+    "plainenglish": "iso-24495-1",
+}
+
+DEFAULT_TLDR_STYLE = "default"
 
 
 def default_docs_dir(cwd, name):
@@ -94,6 +156,35 @@ def feature(config, name):
     merged = dict(DEFAULTS[name])
     merged.update(section)
     return merged if merged.get("enabled") is True else None
+
+
+def tldr_style(settings):
+    """The output style a tldr settings dict resolves to.
+
+    Returns `{"id", "spec", "written", "known"}`. `written` is what the project
+    actually put in the file and `known` whether it named a style at all, so a
+    caller can report "that is not a style I know" instead of silently
+    substituting. An unrecognized or malformed value resolves to the default
+    style rather than switching the capability off: a typo in a wording knob
+    must never cost the summary itself.
+    """
+    raw = settings.get("style") if isinstance(settings, dict) else None
+    written = raw if isinstance(raw, str) else None
+    key = "".join(ch for ch in (written or "").lower() if ch.isalnum())
+    known = key in TLDR_STYLE_ALIASES
+    style_id = TLDR_STYLE_ALIASES.get(key, DEFAULT_TLDR_STYLE)
+    return {"id": style_id, "spec": TLDR_STYLES[style_id],
+            "written": written, "known": known}
+
+
+def tldr_style_notes(settings):
+    """The project's free-text wording notes, stripped — "" when it wrote none.
+
+    A schema cannot hold "we say 'deploy', never 'ship'". This key can, and both
+    the hook reminder and the skill contract pass it through verbatim.
+    """
+    notes = settings.get("style_notes") if isinstance(settings, dict) else None
+    return notes.strip() if isinstance(notes, str) else ""
 
 
 def improve_settings(config):
